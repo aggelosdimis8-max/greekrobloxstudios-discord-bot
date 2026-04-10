@@ -148,4 +148,3 @@ class CloseTicket(discord.ui.View):
         await interaction.channel.delete(delay=3)
 
 bot.run(TOKEN)
-
