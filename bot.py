@@ -15,60 +15,28 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 open_tickets = {}
 
-@bot.event
-async def on_ready():
-    print(f"Bot online as {bot.user}")
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} slash commands")
-    except Exception as e:
-        print(e)
-
-@bot.event
-async def on_member_join(member):
-    role = member.guild.get_role(AUTO_ROLE_ID)
-    if role:
-        await member.add_roles(role)
-
-@bot.tree.command(name="ticketpanel", description="Send the ticket panel")
-async def ticketpanel(interaction: discord.Interaction):
-    if PANEL_ROLE_ID not in [r.id for r in interaction.user.roles]:
-        return await interaction.response.send_message(
-            "❌ Δεν έχεις άδεια να χρησιμοποιήσεις αυτή την εντολή.",
-            ephemeral=True
-        )
-
-    embed = discord.Embed(
-        color=discord.Color.orange(),
-        title="🎫 XTREME ROLEPLAY | ROBLOX TICKET SYSTEM",
-        description="Για την καλύτερη εξυπηρέτησή σας, επιλέξτε το είδος του Ticket που σας ενδιαφέρει..."
-    )
-    embed.set_footer(text="XTREME ROLEPLAY | ROBLOX")
-    embed.set_thumbnail(url="https://i.imgur.com/4M34hi2.png")
-
-    menu = discord.ui.Select(
-        placeholder="Open A Ticket",
-        custom_id="ticket_menu",
-        options=[
-            discord.SelectOption(label="👑 Owner", value="Owner"),
-            discord.SelectOption(label="🔔 Manager", value="Manager"),
-            discord.SelectOption(label="📞 Support", value="Support"),
-            discord.SelectOption(label="💸 Donate", value="Donate"),
-            discord.SelectOption(label="🔍 Report Staff", value="Report_Staff"),
-            discord.SelectOption(label="⛔ Ban Appeal", value="Ban_Appeal"),
-            discord.SelectOption(label="💼 Civilian Job", value="Civilian_Job"),
-            discord.SelectOption(label="🔫 Criminal Job", value="Criminal_Job"),
-            discord.SelectOption(label="🔑 Anticheat", value="Anticheat")
-        ]
-    )
-
-    view = discord.ui.View()
-    view.add_item(menu)
-
-    await interaction.response.send_message("✔ Panel sent.", ephemeral=True)
-    await interaction.channel.send(embed=embed, view=view)
+# ---------------------- PERSISTENT VIEWS ----------------------
 
 class TicketMenu(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+        self.add_item(discord.ui.Select(
+            placeholder="Open A Ticket",
+            custom_id="ticket_menu",
+            options=[
+                discord.SelectOption(label="👑 Owner", value="Owner"),
+                discord.SelectOption(label="🔔 Manager", value="Manager"),
+                discord.SelectOption(label="📞 Support", value="Support"),
+                discord.SelectOption(label="💸 Donate", value="Donate"),
+                discord.SelectOption(label="🔍 Report Staff", value="Report_Staff"),
+                discord.SelectOption(label="⛔ Ban Appeal", value="Ban_Appeal"),
+                discord.SelectOption(label="💼 Civilian Job", value="Civilian_Job"),
+                discord.SelectOption(label="🔫 Criminal Job", value="Criminal_Job"),
+                discord.SelectOption(label="🔑 Anticheat", value="Anticheat")
+            ]
+        ))
+
     @discord.ui.select(custom_id="ticket_menu")
     async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
         user = interaction.user
@@ -116,14 +84,7 @@ class TicketMenu(discord.ui.View):
         )
         embed.set_thumbnail(url="https://i.imgur.com/4M34hi2.png")
 
-        close_button = discord.ui.Button(
-            label="🔒 Delete Ticket",
-            style=discord.ButtonStyle.danger,
-            custom_id="close_ticket"
-        )
-
-        view = discord.ui.View()
-        view.add_item(close_button)
+        view = CloseTicket()
 
         await channel.send(embed=embed, view=view)
 
@@ -132,7 +93,11 @@ class TicketMenu(discord.ui.View):
             ephemeral=True
         )
 
+
 class CloseTicket(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
     @discord.ui.button(label="🔒 Delete Ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = None
@@ -146,5 +111,49 @@ class CloseTicket(discord.ui.View):
 
         await interaction.response.send_message("🔒 Το ticket θα διαγραφεί σε 3 δευτερόλεπτα...", ephemeral=True)
         await interaction.channel.delete(delay=3)
+
+# ---------------------- EVENTS ----------------------
+
+@bot.event
+async def on_ready():
+    print(f"Bot online as {bot.user}")
+
+    bot.add_view(TicketMenu())
+    bot.add_view(CloseTicket())
+
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} slash commands")
+    except Exception as e:
+        print(e)
+
+@bot.event
+async def on_member_join(member):
+    role = member.guild.get_role(AUTO_ROLE_ID)
+    if role:
+        await member.add_roles(role)
+
+# ---------------------- SLASH COMMAND ----------------------
+
+@bot.tree.command(name="ticketpanel", description="Send the ticket panel")
+async def ticketpanel(interaction: discord.Interaction):
+    if PANEL_ROLE_ID not in [r.id for r in interaction.user.roles]:
+        return await interaction.response.send_message(
+            "❌ Δεν έχεις άδεια να χρησιμοποιήσεις αυτή την εντολή.",
+            ephemeral=True
+        )
+
+    embed = discord.Embed(
+        color=discord.Color.orange(),
+        title="🎫 XTREME ROLEPLAY | ROBLOX TICKET SYSTEM",
+        description="Για την καλύτερη εξυπηρέτησή σας, επιλέξτε το είδος του Ticket που σας ενδιαφέρει..."
+    )
+    embed.set_footer(text="XTREME ROLEPLAY | ROBLOX")
+    embed.set_thumbnail(url="https://i.imgur.com/4M34hi2.png")
+
+    await interaction.response.send_message("✔ Panel sent.", ephemeral=True)
+    await interaction.channel.send(embed=embed, view=TicketMenu())
+
+# ---------------------- RUN ----------------------
 
 bot.run(TOKEN)
